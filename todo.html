@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>To-Do</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      background: #f2f2f7;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    header {
+      background: #fff;
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid #e5e5ea;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 34px;
+      font-weight: 700;
+      color: #000;
+    }
+
+    .add-bar {
+      display: flex;
+      gap: 10px;
+      margin: 16px 16px 0;
+    }
+
+    .add-bar input {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 17px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      background: #fff;
+      outline: none;
+      -webkit-appearance: none;
+      color: #000;
+    }
+
+    .add-bar input:focus {
+      border-color: #007aff;
+    }
+
+    .add-bar button {
+      padding: 14px 20px;
+      font-size: 17px;
+      font-weight: 600;
+      background: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      white-space: nowrap;
+    }
+
+    .add-bar button:active {
+      background: #0051d5;
+    }
+
+    .list {
+      list-style: none;
+      margin: 16px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .list li {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid #e5e5ea;
+      gap: 12px;
+    }
+
+    .list li:last-child {
+      border-bottom: none;
+    }
+
+    .list li.done .task-text {
+      text-decoration: line-through;
+      color: #8e8e93;
+    }
+
+    .checkbox {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid #c7c7cc;
+      flex-shrink: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .checkbox.checked {
+      background: #34c759;
+      border-color: #34c759;
+    }
+
+    .checkbox.checked::after {
+      content: "";
+      width: 6px;
+      height: 11px;
+      border: 2.5px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+    }
+
+    .task-text {
+      flex: 1;
+      font-size: 17px;
+      color: #000;
+      word-break: break-word;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #ff3b30;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px 8px;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+
+    .empty {
+      text-align: center;
+      color: #8e8e93;
+      font-size: 17px;
+      padding: 48px 16px;
+    }
+
+    .footer {
+      text-align: center;
+      color: #8e8e93;
+      font-size: 13px;
+      padding: 8px 16px 24px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>To-Do</h1>
+</header>
+
+<div class="add-bar">
+  <input id="newTask" type="text" placeholder="New task..." autocomplete="off" />
+  <button onclick="addTask()">Add</button>
+</div>
+
+<ul class="list" id="taskList"></ul>
+<p class="footer" id="footer"></p>
+
+<script>
+  const input = document.getElementById('newTask');
+  const list  = document.getElementById('taskList');
+  const footer = document.getElementById('footer');
+
+  let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+
+  function save() {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }
+
+  function render() {
+    list.innerHTML = '';
+    if (tasks.length === 0) {
+      list.innerHTML = '<li class="empty">No tasks yet — add one above!</li>';
+      footer.textContent = '';
+      return;
+    }
+
+    tasks.forEach((task, i) => {
+      const li = document.createElement('li');
+      if (task.done) li.classList.add('done');
+
+      const box = document.createElement('div');
+      box.className = 'checkbox' + (task.done ? ' checked' : '');
+      box.onclick = () => toggle(i);
+
+      const span = document.createElement('span');
+      span.className = 'task-text';
+      span.textContent = task.text;
+
+      const del = document.createElement('button');
+      del.className = 'delete-btn';
+      del.textContent = '✕';
+      del.setAttribute('aria-label', 'Delete task');
+      del.onclick = () => remove(i);
+
+      li.append(box, span, del);
+      list.appendChild(li);
+    });
+
+    const done = tasks.filter(t => t.done).length;
+    footer.textContent = done > 0 ? `${done} of ${tasks.length} completed` : `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
+  }
+
+  function addTask() {
+    const text = input.value.trim();
+    if (!text) return;
+    tasks.push({ text, done: false });
+    input.value = '';
+    save();
+    render();
+  }
+
+  function toggle(i) {
+    tasks[i].done = !tasks[i].done;
+    save();
+    render();
+  }
+
+  function remove(i) {
+    tasks.splice(i, 1);
+    save();
+    render();
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  render();
+</script>
+
+</body>
+</html>
